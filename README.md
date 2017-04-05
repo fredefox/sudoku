@@ -8,7 +8,7 @@ Output of sequential benchmark:
 
     > sudoku:benchmarks().
     {52691981,
-    [{wildcat,0.31281},
+     [{wildcat,0.31281},
       {diabolical,43.789019999999994},
       {vegard_hanssen,93.14809},
       {challenge,6.6046000000000005},
@@ -35,7 +35,7 @@ With pooling the results look like this:
 
     > sudoku:poolbenchmarks().
     {37801694,
-    [{wildcat,1.76515},
+     [{wildcat,1.76515},
       {diabolical,84.54417},
       {vegard_hanssen,135.17884},
       {challenge,21.3835},
