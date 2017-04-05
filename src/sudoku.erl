@@ -1,7 +1,7 @@
 -module(sudoku).
 %-include_lib("eqc/include/eqc.hrl").
 -compile(export_all).
--import(par, [parMap/2]).
+-import(par, [parMap/2, poolMap/3]).
 
 %% %% generators
 
@@ -245,6 +245,15 @@ pbenchmarks(Puzzles) ->
     par:parMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles).
 
 pbenchmarks() ->
+    {ok,Puzzles} = file:consult("problems.txt"),
+    timer:tc(?MODULE,pbenchmarks,[Puzzles]).
+
+poolbenchmarks(Puzzles) ->
+    Cores   = 4,
+    Workers = Cores - 1,
+    poolMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles, Workers).
+
+poolbenchmarks() ->
     {ok,Puzzles} = file:consult("problems.txt"),
     timer:tc(?MODULE,pbenchmarks,[Puzzles]).
 

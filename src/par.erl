@@ -68,19 +68,19 @@ pool(Idle) ->
 	    pool([Pid|Idle]);
 	    {work, Call, F} ->
 	    case Idle of
-		[] ->
-		    return(Call, busy);
-		[Worker|Idle2] ->
-		    Worker ! {Call, F},
-		    pool(Idle2)
+          [] ->
+              return(Call, busy);
+          [Worker|Idle2] ->
+              Worker ! {Call, F},
+              pool(Idle2)
 	    end
     end.
 work(F,Pool) ->
     Pool ! {work, Call = call(), F},
     case awaitCall(Call) of
-	busy ->
-	    F();
-	{ok,X} -> X
+        busy ->
+            F();
+        {ok,X} -> X
     end.
 worker(Pool) ->
     Pool ! {addWorker, self()},
@@ -88,6 +88,11 @@ worker(Pool) ->
 	    return(Call,{ok,F()}),
 	    worker(Pool)
     end.
+
+poolMap(F, Xs, N) ->
+    Pool = self(),
+    spawn_link(fun() -> pool(N, Pool) end),
+    parMap(fun (X) -> work(fun() -> F(X) end, Pool) end, Xs).
 
 call() ->
     {self(), make_ref()}.

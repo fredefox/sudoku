@@ -30,3 +30,19 @@ Output of parallelized benchmark:
 
 We see that the overall time has gone down, but the time for solving each
 individual puzzle has gone up possibly due to contention.
+
+With pooling the results look like this:
+
+    > sudoku:poolbenchmarks().
+    {37801694,
+    [{wildcat,1.76515},
+      {diabolical,84.54417},
+      {vegard_hanssen,135.17884},
+      {challenge,21.3835},
+      {challenge1,378.01133000000004},
+      {extreme,30.67472},
+      {seventeen,56.00633}]}
+
+The results are not drastically different from the previous result. This is
+likely due to the small size of the list. We would expect the improvement to
+be more pronounced if we were solving - say - a thousand sudokus in parallel.
