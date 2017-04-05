@@ -16,3 +16,17 @@ Output of sequential benchmark:
       {extreme,8.39593},
       {seventeen,30.94689}]}
 
+Output of parallelized benchmark:
+
+    2> sudoku:pbenchmarks().
+    {36855382,
+    [{wildcat,1.98806},
+      {diabolical,76.61157},
+      {vegard_hanssen,132.22502},
+      {challenge,11.24081},
+      {challenge1,368.53671},
+      {extreme,20.65632},
+      {seventeen,54.95603}]}
+
+We see that the overall time has gone down, but the time for solving each
+individual puzzle has gone up due to contention.
