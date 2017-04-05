@@ -33,7 +33,7 @@ pipeline([F|Fs]) ->
 pipelineNil(F) ->
     receive {Call,Input} ->
 	    Output = F(Input),
-	    returnCall(Call,Output),
+	    return(Call,Output),
 	    pipelineNil(F)
     end.
 pipelineCons(F,Next) ->
