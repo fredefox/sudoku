@@ -19,25 +19,14 @@ Output of sequential benchmark:
 Output of parallelized benchmark:
 
     > sudoku:pbenchmarks().
-    {36855382,
-    [{wildcat,1.98806},
-      {diabolical,76.61157},
-      {vegard_hanssen,132.22502},
-      {challenge,11.24081},
-      {challenge1,368.53671},
-      {extreme,20.65632},
-      {seventeen,54.95603}]}
+    {38856233,
+     [{wildcat,2.29569},
+      {diabolical,85.9101},
+      {vegard_hanssen,139.75928},
+      {challenge,10.92692},
+      {challenge1,388.55411},
+      {extreme,30.87589},
+      {seventeen,58.32384}]}
 
 We see that the overall time has gone down, but the time for solving each
-individual puzzle has gone up due to contention.
-
-In the last version we spawn the tasks in a different order:
-
-    {37415740,
-     [{wildcat,374.15009999999995},
-      {diabolical,128.73331},
-      {vegard_hanssen,80.27239999999999},
-      {challenge,54.99237},
-      {challenge1,21.5966},
-      {extreme,11.02835},
-      {seventeen,2.17739}]}
+individual puzzle has gone up possibly due to contention.

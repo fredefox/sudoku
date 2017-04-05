@@ -241,27 +241,12 @@ benchmarks() ->
 
 %% We assume that the task of solving a sudoku already has a fairly
 %% decent granularity.
-pbenchmarks([]) -> [];
-pbenchmarks([{Name,M}|Ps]) ->
-    Parent = self(),
-    spawn_link(
-      fun() ->
-              Parent ! pbenchmarks(Ps)
-      end),
-    X = bm(fun()->solve(M) end),
-    [{Name, X}] ++ receive Rem -> Rem end.
+pbenchmarks(Puzzles) ->
+    par:parMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles).
 
 pbenchmarks() ->
     {ok,Puzzles} = file:consult("problems.txt"),
     timer:tc(?MODULE,pbenchmarks,[Puzzles]).
-
-%% Like above but spawning each entry rather than the remainder.
-pbenchmarksRev(Puzzles) ->
-    par:parMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles).
-
-pbenchmarksRev() ->
-    {ok,Puzzles} = file:consult("problems.txt"),
-    timer:tc(?MODULE,pbenchmarksRev,[Puzzles]).
 
 %% check solutions for validity
 
