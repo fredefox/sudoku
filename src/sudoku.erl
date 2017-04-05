@@ -1,6 +1,7 @@
 -module(sudoku).
 %-include_lib("eqc/include/eqc.hrl").
 -compile(export_all).
+-import(par, [parMap/2]).
 
 %% %% generators
 
@@ -255,15 +256,8 @@ pbenchmarks() ->
     timer:tc(?MODULE,pbenchmarks,[Puzzles]).
 
 %% Like above but spawning each entry rather than the remainder.
-pbenchmarksRev([]) -> [];
-pbenchmarksRev([{Name,M}|Ps]) ->
-    Parent = self(),
-    spawn_link(
-      fun() ->
-              Parent ! bm(fun()->solve(M) end)
-      end),
-    Rem = pbenchmarksRev(Ps),
-    receive X -> [{Name, X} | Rem] end.
+pbenchmarksRev(Puzzles) ->
+    par:parMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles).
 
 pbenchmarksRev() ->
     {ok,Puzzles} = file:consult("problems.txt"),
