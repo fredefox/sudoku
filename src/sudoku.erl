@@ -254,6 +254,21 @@ pbenchmarks() ->
     {ok,Puzzles} = file:consult("problems.txt"),
     timer:tc(?MODULE,pbenchmarks,[Puzzles]).
 
+%% Like above but spawning each entry rather than the remainder.
+pbenchmarksRev([]) -> [];
+pbenchmarksRev([{Name,M}|Ps]) ->
+    Parent = self(),
+    spawn_link(
+      fun() ->
+              Parent ! bm(fun()->solve(M) end)
+      end),
+    Rem = pbenchmarksRev(Ps),
+    receive X -> [{Name, X} | Rem] end.
+
+pbenchmarksRev() ->
+    {ok,Puzzles} = file:consult("problems.txt"),
+    timer:tc(?MODULE,pbenchmarksRev,[Puzzles]).
+
 %% check solutions for validity
 
 valid_rows(M) ->
