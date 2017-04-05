@@ -130,3 +130,21 @@ chanF() ->
     {Send,Receive} = chan(),
     {fun (X) -> sendChan(Send,X) end,
      fun () -> receiveChan(Receive) end}.
+
+%%while I'm at it
+takeMVar(MVar) ->
+    MVar ! {take,R = make_ref(), self()},
+    receive {R,X} -> X end.
+putMVar(MVar,X) ->
+    MVar ! {put,R = make_ref(), self(), X},
+    receive R -> ok end.
+mvar(nothing) ->
+    receive {put,R,Pid,X} ->
+	    Pid ! R,
+	    mvar({just,X})
+    end;
+mvar({just,X}) ->
+    receive {take,R,Pid} ->
+	    Pid ! {R,X},
+	    mvar(nothing)
+    end.
