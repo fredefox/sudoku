@@ -140,7 +140,7 @@ solved_row(Row) ->
 
 %% how hard is the puzzle?
 
-hard(M) ->		      
+hard(M) ->
     lists:sum(
       [lists:sum(
 	 [if is_list(X) ->
@@ -237,7 +237,23 @@ benchmarks(Puzzles) ->
 benchmarks() ->
   {ok,Puzzles} = file:consult("problems.txt"),
   timer:tc(?MODULE,benchmarks,[Puzzles]).
-		      
+
+%% We assume that the task of solving a sudoku already has a fairly
+%% decent granularity.
+pbenchmarks([]) -> [];
+pbenchmarks([{Name,M}|Ps]) ->
+    Parent = self(),
+    spawn_link(
+      fun() ->
+              Parent ! pbenchmarks(Ps)
+      end),
+    X = bm(fun()->solve(M) end),
+    [{Name, X}] ++ receive Rem -> Rem end.
+
+pbenchmarks() ->
+    {ok,Puzzles} = file:consult("problems.txt"),
+    timer:tc(?MODULE,pbenchmarks,[Puzzles]).
+
 %% check solutions for validity
 
 valid_rows(M) ->
