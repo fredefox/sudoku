@@ -31,21 +31,21 @@ pipeline([F|Fs]) ->
     P2 = spawn(fun () -> pipelineCons(F,P) end),
     [P2,P|Ps].
 pipelineNil(F) ->
-    receive {Caller,Ref,Input} ->
+    receive {Call,Input} ->
 	    Output = F(Input),
-	    Caller ! {Ref,Output},
+	    returnCall(Call,Output),
 	    pipelineNil(F)
     end.
 pipelineCons(F,Next) ->
-    receive {Caller,Ref,Input} ->
+    receive {Call,Input} ->
 	    Output = F(Input),
-	    Next ! {Caller,Ref,Output},
+	    Next ! {Call,Output},
 	    pipelineCons(F,Next)
     end.
 usePipeline([P|_]) ->
     fun (X) ->
-	    P ! {self(), R = make_ref(), X},
-	    asyncAwait(R)
+	    P ! {Call = call(), X},
+	    awaitCall(Call)
     end.
 killPipeline(Ps) ->
     [exit(P,kill) || P <- Ps],
