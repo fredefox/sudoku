@@ -3,20 +3,18 @@
 
 %%creates an async value only accessible by the current process
 spawnAsync(F) ->
-    R = make_ref(),
-    S = self(),
-    spawn_link(fun () ->
-		       S ! {R, F()}
-	       end),
-    R.
-awaitAsync(R) ->
-    receive {R, X} ->
-	    X
-    end.
+    {Send,Receive} = chan(),
+    spawn_link(fun () -> sendChan(Send,F()) end),
+    Receive.
+
+%%removed awaitAsync: use receiveChan instead
+awaitAsync(_) ->
+    io:format("ERROR: use receiveChan/1 instead!"),
+    exit(self(),kill).
 
 parMap(F,Xs) ->
     As = [spawnAsync(fun () -> F(X) end) || X <- Xs],
-    [awaitAsync(A) || A <- As].
+    [receiveChan(A) || A <- As].
 
 %%creates a single pipeline object
 %% newtype Pipeline a = Pipeline [Pid]
@@ -33,7 +31,7 @@ pipeline([F|Fs]) ->
 pipelineNil(F) ->
     receive {Call,Input} ->
 	    Output = F(Input),
-	    return(Call,Output),
+	    sendChan(Call,Output),
 	    pipelineNil(F)
     end.
 pipelineCons(F,Next) ->
@@ -44,61 +42,91 @@ pipelineCons(F,Next) ->
     end.
 usePipeline([P|_]) ->
     fun (X) ->
-	    P ! {Call = call(), X},
-	    awaitCall(Call)
+	    {S,R} = chan(),
+	    P ! {S,X},
+	    receiveChan(R)
     end.
 killPipeline(Ps) ->
     [exit(P,kill) || P <- Ps],
     ok.
 
-%%Worker pool interface
-%%pool :: IO ()
-%%work :: (IO a,Pool) -> IO a
-%%addWorker :: (Worker,Pool) -> IO ()
-%%worker :: Pool -> IO ()
-%%spawnWorker :: Pool -> IO ()
-%%pool either does work for you and sends back result {ok,a} or (pool,'busy')
-pool(NumWorkers,Name) ->
-    Pool = self(),
-    [spawn_link(fun () -> worker(Pool) end) || _ <- lists:seq(1,NumWorkers)], 
-    true = register(Name,Pool),
-    pool([]).
+%%This pool is inefficient: tasks get sent via pool and you can't reserve
+%%a worker
+newPool(NumWorkers) ->
+    spawn(fun () ->
+		  Pool = self(),
+		  [spawn_link(fun () -> worker(Pool) end)
+		   || _ <- lists:seq(1,NumWorkers)],
+		  pool([])
+	  end).
+%%change: let customer know immediately that you're working on it
 pool(Idle) ->
     receive {addWorker,Pid} ->
 	    pool([Pid|Idle]);
-	    {work, Call, F} ->
+	    {work, Send, F} ->
 	    case Idle of
-          [] ->
-              return(Call, busy);
-          [Worker|Idle2] ->
-              Worker ! {Call, F},
-              pool(Idle2)
+		[] ->
+		    sendChan(Send,busy);
+		[Worker|Idle2] ->
+		    Worker ! {Send, F},
+		    sendChan(Send,working),
+		    pool(Idle2)
 	    end
     end.
-work(F,Pool) ->
-    Pool ! {work, Call = call(), F},
-    case awaitCall(Call) of
-        busy ->
-            F();
-        {ok,X} -> X
-    end.
+
 worker(Pool) ->
     Pool ! {addWorker, self()},
-    receive {Call, F} ->
-	    return(Call,{ok,F()}),
+    receive {Send, F} ->
+	    sendChan(Send,{done,F()}),
 	    worker(Pool)
     end.
 
-poolMap(F, Xs, N) ->
-    Pool = self(),
-    spawn_link(fun() -> pool(N, Pool) end),
-    parMap(fun (X) -> work(fun() -> F(X) end, Pool) end, Xs).
+%%Also functions as a metaphor for capitalism
+poolMap(F,Xs,N) ->
+    S = self(),
+    R = make_ref(),
+    [spawn_link(fun() -> poolMapWorker(F,S,R) end) || _ <- lists:seq(1,N)], 
+    LenXs = employWorkers(F,Xs,R,_Index = 0),
+    killTheUnemployed(N,R),
+    collectWork(R,LenXs).
+employWorkers(_,[],_R,Index) ->
+    Index;
+employWorkers(F,[X|Xs],R,Index) ->
+    receive {job_application,R,Worker} ->
+	    Worker ! {R,Index,X}
+    after 0 -> %%Dang, guess I'll have to do some work myself!
+	    self() ! {R,Index,F(X)}
+    end,
+    employWorkers(F,Xs,R,Index+1).
+killTheUnemployed(0,_) ->
+    ok;
+killTheUnemployed(N,R) ->
+    receive {job_application,R,Worker} ->
+	    Worker ! die,
+	    killTheUnemployed(N-1,R)
+    end.
+collectWork(R,LenXs) ->
+    [receive {R,Index,FX} -> FX end || Index <- lists:seq(0,LenXs-1)].
+poolMapWorker(F,Employer,R) ->
+    Employer ! {job_application,R,self()},
+    receive {R,Index,X} ->
+	    Employer ! {R,Index,F(X)},
+	    poolMapWorker(F,Employer,R);
+	    die -> ok
+    end.
 
-call() ->
-    {self(), make_ref()}.
-return({Pid,Ref},X) ->
+chan() ->
+    S = self(),
+    R = make_ref(),
+    {_Send = {S,R}, _Receive = R}.
+sendChan({Pid,Ref},X) ->
     Pid ! {Ref,X}.
-awaitCall({_,Ref}) ->
+receiveChan(Ref) ->
     receive {Ref, X} ->
 	    X
     end.
+
+chanF() ->
+    {Send,Receive} = chan(),
+    {fun (X) -> sendChan(Send,X) end,
+     fun () -> receiveChan(Receive) end}.
