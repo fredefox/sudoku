@@ -99,6 +99,12 @@ refine(M) ->
     end.
 
 refine_rows(M) ->
+    %% Just changing to this
+    %%
+    %% > par:parMap(fun refine_row/1,M).
+    %%
+    %% Unfortunately does not work for some reason. We get the no_solution
+    %% exception.
     lists:map(fun refine_row/1,M).
 
 refine_row(Row) ->
