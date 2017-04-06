@@ -99,7 +99,10 @@ refine(M) ->
     end.
 
 refine_rows(M) ->
-    lists:map(fun refine_row/1,M).
+    A = lists:map(fun refine_row/1,M),
+    B = par:parMap(fun refine_row/1,M),
+    A = B,
+    A.
 
 refine_row(Row) ->
     Entries = entries(Row),
@@ -223,7 +226,7 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+-define(EXECUTIONS,1).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
