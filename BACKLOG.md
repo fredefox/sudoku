@@ -53,3 +53,9 @@
          in call from par:pool/2 (par.erl, line 64)
 
   And again I have no idea what the problem is.
+
+* Problem with `poolMap/3`
+
+  If I run `par:poolMap(fun(X) -> X * 2 end, lists:seq(1,1000000), 3).`
+  and look at my cpu usage (e.g. with `top`) it looks like only one
+  core is being used for the computation.
