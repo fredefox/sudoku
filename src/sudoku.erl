@@ -1,7 +1,8 @@
 -module(sudoku).
 %-include_lib("eqc/include/eqc.hrl").
 -compile(export_all).
--import(par, [parMap/2, poolMap/3]).
+-import(par, [poolMap/3]).
+-import(p, [parMap/2]).
 
 %% %% generators
 
@@ -99,12 +100,16 @@ refine(M) ->
     end.
 
 refine_rows(M) ->
-    A = lists:map(fun refine_row/1,M),
-    B = par:parMap(fun refine_row/1,M),
-    A = B,
-    A.
+    % poolMap(fun refine_row/1, M, Workers).
+    % lists:map(fun refine_row/1, M).
+    p:parMap(fun refine_row/1, M).
+
+poolMap(F, Xs) ->
+    Cores = 4, Workers = Cores - 1,
+    par:poolMap(F, Xs, Workers).
 
 refine_row(Row) ->
+    io:fwrite("~s~n", [io_lib:write(Row)]),
     Entries = entries(Row),
     NewRow =
 	[if is_list(X) ->
@@ -126,7 +131,7 @@ refine_row(Row) ->
 	true ->
 	    NewRow;
 	false ->
-	    exit(no_solution)
+	    exit(no_solution_duplicate_entries)
     end.
 
 is_exit({'EXIT',_}) ->
@@ -226,7 +231,7 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+-define(EXECUTIONS,1).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),

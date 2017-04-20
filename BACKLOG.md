@@ -62,3 +62,31 @@
   If I run `par:poolMap(fun(X) -> X * 2 end, lists:seq(1,1000000), 3).`
   and look at my cpu usage (e.g. with `top`) it looks like only one
   core is being used for the computation.
+
+* Issue with `par:parMap/2`
+
+  In debugging all of the above I ran into a problem with `par:parMap/2`:
+
+	 par:parMap(fun(X) -> TTT = random:uniform(100), {hej, TTT} end, lists:seq(0,20)).
+	[{hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45},
+	 {hej,45}]
+

@@ -16,6 +16,22 @@ parMap(F,Xs) ->
     As = [spawnAsync(fun () -> F(X) end) || X <- Xs],
     [receiveChan(A) || A <- As].
 
+myChan() ->
+  R = make_ref(),
+  S = self(),
+  Reply = fun(F) -> S ! {R, F()} end,
+  Receive = fun() -> receive {R, X} -> X end end,
+  {Reply, Receive}.
+
+mySpawnAsync(F) ->
+  {Reply, Receive} = myChan(),
+  spawn_link(fun() -> Reply(F) end),
+  Receive.
+
+myParMap(F, Xs) ->
+  As = [mySpawnAsync(fun() -> F(X) end) || X <- Xs],
+  [A() || A <- As].
+
 %%creates a single pipeline object
 %% newtype Pipeline a = Pipeline [Pid]
 %% pipeline :: [a->a] -> Pipeline a
