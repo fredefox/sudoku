@@ -99,10 +99,13 @@ refine(M) ->
     end.
 
 refine_rows(M) ->
-    A = lists:map(fun refine_row/1,M),
-    B = par:parMap(fun refine_row/1,M),
-    A = B,
-    A.
+    %% Just changing to this
+    %%
+    %% > par:parMap(fun refine_row/1,M).
+    %%
+    %% Unfortunately does not work for some reason. We get the no_solution
+    %% exception.
+    lists:map(fun refine_row/1,M).
 
 refine_row(Row) ->
     Entries = entries(Row),
@@ -226,7 +229,7 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
--define(EXECUTIONS,1).
+-define(EXECUTIONS,100).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
