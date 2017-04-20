@@ -22,3 +22,14 @@
     ** exception exit: no_solution
 
   What gives?
+
+* Speculative paralellism
+
+  As Anton Ekblad told us about at the lecture before easter
+  we can use speculative parallelism when performing guesses
+  on the sudoku.
+
+  The hand-out mentions that we should have a go at parallelizing
+  the solver but does not say we need to do it in multiple ways.
+  If we solve the above problem we might not need to implement
+  other approaches - but this is one viable method.
