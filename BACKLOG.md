@@ -23,6 +23,9 @@
 
   What gives?
 
+  I believe that this problem (and others) is caused by race-conditions.
+  But this is just conjecture.
+
 * Speculative paralellism
 
   As Anton Ekblad told us about at the lecture before easter
