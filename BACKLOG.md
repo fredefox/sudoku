@@ -33,3 +33,8 @@
   the solver but does not say we need to do it in multiple ways.
   If we solve the above problem we might not need to implement
   other approaches - but this is one viable method.
+
+* Explain our results
+
+  After we've implemented the approaches we wanna use we should
+  document them in the README and explain how to reproduce them.
