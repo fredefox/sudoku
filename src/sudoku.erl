@@ -254,7 +254,7 @@ pbenchmarks() ->
 poolbenchmarks(Puzzles) ->
     Cores   = 4,
     Workers = Cores - 1,
-    poolMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles, Workers).
+    par:poolMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles, Workers).
 
 poolbenchmarks() ->
     {ok,Puzzles} = file:consult("problems.txt"),

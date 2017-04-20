@@ -38,3 +38,18 @@
 
   After we've implemented the approaches we wanna use we should
   document them in the README and explain how to reproduce them.
+
+* Using `par:poolMap/3` in `refine_rows/1`
+
+  We could use `par:poolMap/3` in place of `par:parMap/2` in
+  `refine_rows/1`. However, if I do that, then I get this error:
+
+    Error in process <0.23337.48> with exit value:
+    {badarg,[{erlang,register,[<0.57.0>,<0.23337.48>],[]},
+             {par,pool,2,[{file,"par.erl"},{line,64}]}]}
+    ** exception exit: badarg
+         in function  register/2
+            called as register(<0.57.0>,<0.23337.48>)
+         in call from par:pool/2 (par.erl, line 64)
+
+  And again I have no idea what the problem is.
