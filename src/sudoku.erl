@@ -99,10 +99,11 @@ refine(M) ->
     end.
 
 refine_rows(M) ->
-    A = lists:map(fun refine_row/1,M),
+    
+    %%A = lists:map(fun refine_row/1,M),
     B = par:parMap(fun refine_row/1,M),
-    A = B,
-    A.
+    %%A = B,
+    B.
 
 refine_row(Row) ->
     Entries = entries(Row),
@@ -110,7 +111,7 @@ refine_row(Row) ->
 	[if is_list(X) ->
 		 case X--Entries of
 		     [] ->
-			 exit(no_solution);
+			 exit(no_solution1);
 		     [Y] ->
 			 Y;
 		     NewX ->
@@ -126,7 +127,7 @@ refine_row(Row) ->
 	true ->
 	    NewRow;
 	false ->
-	    exit(no_solution)
+	    exit({no_solution2,Row,lists:usort(NewEntries),NewEntries})
     end.
 
 is_exit({'EXIT',_}) ->
@@ -226,7 +227,7 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+-define(EXECUTIONS,1).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
