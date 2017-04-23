@@ -85,14 +85,29 @@ fill(M) ->
 %% not to be
 
 refine(M) ->
-    NewM =
-	refine_rows(
-	  transpose(
-	    refine_rows(
-	      transpose(
-		unblocks(
-		  refine_rows(
-		    blocks(M))))))),
+    %% NewM =
+    %%     refine_rows(
+    %%       transpose(
+    %%         refine_rows(
+    %%           transpose(
+    %%             unblocks(
+    %%               refine_rows(
+    %%                 blocks(M)
+    %%                )
+    %%              )
+    %%            )
+    %%          )
+    %%        )
+    %%      ),
+    F = par:usePipeline(par:pipeline(
+      [ fun refine_rows/1
+      , fun unblocks/1
+      , fun transpose/1
+      , fun refine_rows/1
+      , fun transpose/1
+      , fun refine_rows/1
+      ])),
+    NewM = F(M),
     if M==NewM ->
 	    M;
        true ->
@@ -101,9 +116,9 @@ refine(M) ->
 
 refine_rows(M) ->
     % poolMap(fun refine_row/1, M, Workers).
-    % lists:map(fun refine_row/1, M).
+    lists:map(fun refine_row/1, M).
     % p:parMap(fun refine_row/1, M).
-    p:granularParMap(fun refine_row/1, M, 10000000000).
+    % p:granularParMap(fun refine_row/1, M, 1).
 
 poolMap(F, Xs) ->
     Cores = 4, Workers = Cores - 1,
