@@ -103,7 +103,7 @@ refine_rows(M) ->
     % poolMap(fun refine_row/1, M, Workers).
     % lists:map(fun refine_row/1, M).
     % p:parMap(fun refine_row/1, M).
-    p:granularParMap(fun refine_row/1, M, 10000).
+    p:granularParMap(fun refine_row/1, M, 10000000000).
 
 poolMap(F, Xs) ->
     Cores = 4, Workers = Cores - 1,
