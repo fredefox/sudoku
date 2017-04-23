@@ -13,8 +13,21 @@ awaitAsync(_) ->
     exit(self(),kill).
 
 parMap(F,Xs) ->
-    As = [spawnAsync(fun () -> F(X) end) || X <- Xs],
-    [receiveChan(A) || A <- As].
+    S = self(),
+    RPs = [begin 
+	      R = make_ref(),
+	      P = spawn(fun () -> 
+				S ! {R,catch({ok,F(X)})}
+			end),
+	      {R,P}
+	  end || X <- Xs],
+    KillChildren = fun () -> [exit(P,kill) || {_,P} <- RPs] end,
+    [receive {R,{ok,X}} -> X;
+	     {R,{'ERROR',Reason}} -> KillChildren(),
+				    exit(Reason)
+     end || {R,_} <- RPs].
+    %%As = [spawnAsync(fun () -> F(X) end) || X <- Xs],
+    %%[receiveChan(A) || A <- As].
 
 %%creates a single pipeline object
 %% newtype Pipeline a = Pipeline [Pid]
