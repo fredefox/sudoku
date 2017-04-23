@@ -111,7 +111,7 @@ refine_row(Row) ->
 	[if is_list(X) ->
 		 case X--Entries of
 		     [] ->
-			 exit(no_solution1);
+			 exit(no_solution);
 		     [Y] ->
 			 Y;
 		     NewX ->
@@ -127,7 +127,7 @@ refine_row(Row) ->
 	true ->
 	    NewRow;
 	false ->
-	    exit({no_solution2,Row,lists:usort(NewEntries),NewEntries})
+	    exit(no_solution)
     end.
 
 is_exit({'EXIT',_}) ->

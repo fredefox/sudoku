@@ -23,7 +23,7 @@ parMap(F,Xs) ->
 	  end || X <- Xs],
     KillChildren = fun () -> [exit(P,kill) || {_,P} <- RPs] end,
     [receive {R,{ok,X}} -> X;
-	     {R,{'ERROR',Reason}} -> KillChildren(),
+	     {R,{'EXIT',Reason}} -> KillChildren(),
 				    exit(Reason)
      end || {R,_} <- RPs].
     %%As = [spawnAsync(fun () -> F(X) end) || X <- Xs],
