@@ -11,11 +11,32 @@ chan() ->
 % Call a function in parallel, return a promise for that value.
 spawnAsync(F) ->
   {Reply, Receive} = chan(),
-  spawn_link(fun() -> Reply(F()) end),
+  spawn_link(fun() -> Reply(catch({ok, F()})) end),
   Receive.
 
 parMap(F, Xs) ->
   As = [spawnAsync(fun() -> F(X) end) || X <- Xs],
-  [A() || A <- As].
+  [case R() of
+    {ok, A} -> A;
+    {'EXIT', E} -> exit(E);
+    E -> exit(E)
+  end || R <- As].
 
-init() -> parMap(fun(_) -> rand:uniform(100) end, lists:seq(0,10)).
+split_at_most(N, L) when is_integer(N), N >= 0, is_list(L) ->
+    split_at_most(N, L, []).
+
+split_at_most(N, [H|T], PR) when N > 0 ->
+  split_at_most(N-1, T, [H|PR]);
+split_at_most(_, S, PR) ->
+  {lists:reverse(PR), S}.
+
+chunksOf(_, []) -> [];
+chunksOf(N, Xs) ->
+  {A, B} = split_at_most(N, Xs),
+  Bs = chunksOf(N, B),
+  [A | Bs].
+
+granularParMap(F, Xs, N) ->
+  Cs = chunksOf(N, Xs),
+  Xss = parMap(fun(A) -> lists:map(F, A) end, Cs),
+  lists:concat(Xss).

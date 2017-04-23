@@ -102,14 +102,14 @@ refine(M) ->
 refine_rows(M) ->
     % poolMap(fun refine_row/1, M, Workers).
     % lists:map(fun refine_row/1, M).
-    p:parMap(fun refine_row/1, M).
+    % p:parMap(fun refine_row/1, M).
+    p:granularParMap(fun refine_row/1, M, 10000).
 
 poolMap(F, Xs) ->
     Cores = 4, Workers = Cores - 1,
     par:poolMap(F, Xs, Workers).
 
 refine_row(Row) ->
-    io:fwrite("~s~n", [io_lib:write(Row)]),
     Entries = entries(Row),
     NewRow =
 	[if is_list(X) ->
