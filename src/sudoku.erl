@@ -85,34 +85,41 @@ fill(M) ->
 %% not to be
 
 refine(M) ->
-    %% NewM =
-    %%     refine_rows(
-    %%       transpose(
-    %%         refine_rows(
-    %%           transpose(
-    %%             unblocks(
-    %%               refine_rows(
-    %%                 blocks(M)
-    %%                )
-    %%              )
-    %%            )
-    %%          )
-    %%        )
-    %%      ),
-    F = par:usePipeline(par:pipeline(
-      [ fun refine_rows/1
-      , fun unblocks/1
-      , fun transpose/1
-      , fun refine_rows/1
-      , fun transpose/1
-      , fun refine_rows/1
-      ])),
-    NewM = F(M),
+    NewM =
+        refine_rows(
+          transpose(
+            refine_rows(
+              transpose(
+                unblocks(
+                  refine_rows(
+                    blocks(M)
+                   )
+                 )
+               )
+             )
+           )
+         ),
+    %% F = par:usePipeline(par:pipeline(
+    %%   [ fun blocks/1
+    %%   , fun refine_rows/1
+    %%   , fun unblocks/1
+    %%   , fun transpose/1
+    %%   , fun refine_rows/1
+    %%   , fun transpose/1
+    %%   , fun refine_rows/1
+    %%   ])),
+    %% NewM = F(M),
     if M==NewM ->
 	    M;
        true ->
 	    refine(NewM)
     end.
+
+f() ->
+  A = fun(X) -> X + 2 end,
+  B = fun(X) -> X * 2 end,
+  Pipe = par:usePipeline(par:pipeline([A, B])),
+  Pipe(4).
 
 refine_rows(M) ->
     % poolMap(fun refine_row/1, M, Workers).
@@ -146,7 +153,7 @@ refine_row(Row) ->
 	true ->
 	    NewRow;
 	false ->
-	    exit(no_solution_duplicate_entries)
+	    exit(no_solution)
     end.
 
 is_exit({'EXIT',_}) ->
@@ -258,27 +265,26 @@ repeat(F) ->
 benchmarks(Puzzles) ->
     [{Name,bm(fun()->solve(M) end)} || {Name,M} <- Puzzles].
 
+bench(Fun) ->
+    {ok,Puzzles} = file:consult("problems.txt"),
+    timer:tc(?MODULE,Fun,[Puzzles]).
+
 benchmarks() ->
-  {ok,Puzzles} = file:consult("problems.txt"),
-  timer:tc(?MODULE,benchmarks,[Puzzles]).
+    bench(benchmarks).
 
 %% We assume that the task of solving a sudoku already has a fairly
 %% decent granularity.
 pbenchmarks(Puzzles) ->
     par:parMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles).
 
-pbenchmarks() ->
-    {ok,Puzzles} = file:consult("problems.txt"),
-    timer:tc(?MODULE,pbenchmarks,[Puzzles]).
+pbenchmarks() -> bench(pbenchmarks).
 
 poolbenchmarks(Puzzles) ->
     Cores   = 4,
     Workers = Cores - 1,
     par:poolMap(fun({Name, M}) -> {Name, bm(fun() -> solve(M) end)} end, Puzzles, Workers).
 
-poolbenchmarks() ->
-    {ok,Puzzles} = file:consult("problems.txt"),
-    timer:tc(?MODULE,pbenchmarks,[Puzzles]).
+poolbenchmarks() -> bench(poolbenchmarks).
 
 %% check solutions for validity
 
