@@ -26,8 +26,6 @@
 -module(heaps).
 -export([add/2, delete_min/1, from_list/1, empty/1, merge/2, new/0, min/1,
          size/1, sort/1, to_list/1]).
--import(lists).
-
 
 % Public interface: priority queues
 
