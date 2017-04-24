@@ -231,6 +231,10 @@ solve(Sud) ->
   format("killing workers~n"),
   % process_flag(trap_exit,true),
   [exit(P, 'normal') || P <- Pids],
+  case Result of
+    {ok, Res} -> true = solved(Res);
+    no_solution -> ok
+  end,
   Result.
 
 dbg(_S) -> ok. % io:format("[~p]: ~p~n", [self(), S]).
@@ -245,7 +249,7 @@ worker(S) ->
       case solved(Puzzle) of
         true  -> dbg("was solved"), S ! {solved, Puzzle};
         false -> dbg("wasnt solved"),
-                 Puzzles = [{hard(P), P} || P <- guesses(Puzzle)],
+                 Puzzles = [{hard(P), P} || P <- lists:map(fun refine/1, guesses(Puzzle))],
                  S ! {merge, {prioq,_,_} = heaps:from_list(Puzzles)},
                  worker(S)
       end
