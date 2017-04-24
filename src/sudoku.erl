@@ -3,6 +3,7 @@
 -compile(export_all).
 -import(par, [poolMap/3]).
 -import(p, [parMap/2]).
+-import(heaps, [add/2, from_list/1, merge/2, min/1]).
 
 %% %% generators
 
@@ -125,7 +126,7 @@ refine_rows(M) ->
     % poolMap(fun refine_row/1, M, Workers).
     lists:map(fun refine_row/1, M).
     % p:parMap(fun refine_row/1, M).
-    % p:granularParMap(fun refine_row/1, M, 1).
+    % p:granularParMap(fun refine_row/1, M, 2).
 
 poolMap(F, Xs) ->
     Cores = 4, Workers = Cores - 1,
@@ -136,15 +137,11 @@ refine_row(Row) ->
     NewRow =
 	[if is_list(X) ->
 		 case X--Entries of
-		     [] ->
-			 exit(no_solution);
-		     [Y] ->
-			 Y;
-		     NewX ->
-			 NewX
+		     [] -> exit(no_solution);
+		     [Y] -> Y;
+		     NewX -> NewX
 		 end;
-	    true ->
-		 X
+	   true -> X
 	 end
 	 || X <- Row],
     NewEntries = entries(NewRow),
@@ -231,6 +228,7 @@ solve(M) ->
 	    exit({invalid_solution,Solution})
     end.
 
+%% Uses guesses to solve puzzles that are only partially solved.
 solve_refined(M) ->
     case solved(M) of
 	true ->
@@ -238,6 +236,57 @@ solve_refined(M) ->
 	false ->
 	    solve_one(guesses(M))
     end.
+
+% Xs :: Heap (Int, SudokuPuzzle)
+heapServer(Xs) ->
+  receive
+    % NewXs is an ordered list.
+    %   NewXs :: [(Int, SudokuPuzzle)]
+    {_Pid, {'merge', Ys}} -> heapServer(heaps:merge(Xs, Ys));
+    {Pid , {'pop'}} ->
+       case heaps:delete_min(Xs) of
+         {'ok', {NewXs, Min}} ->
+           Pid ! {'ok', Min},
+           heapServer(NewXs);
+         {'empty'} ->
+           % TODO Add `Pid` to list of waiting elements.
+           Pid ! {'empty'},
+           heapServer(Xs)
+       end
+  end.
+
+startHeapServer(Ms) ->
+  Pid = spawn_link(fun() -> heapServer(heaps:from_list(Ms)) end),
+  Pop = fun() -> Pid ! {'pop'}, receive X -> X end end,
+  Merge = fun(Xs) -> Pid ! {'merge', Xs} end,
+  {Pop, Merge}.
+
+% Ms :: Heap (Int, SudokuPuzzle)
+manager(Ms) ->
+  {Pop, Merge} = startHeapServer(Ms),
+  S = self(),
+  Solved = fun(Solution) -> S ! Solution end,
+  {Recv, Stop} = pool(4, fun() -> sudokuWorker(Pop, Merge, Solved) end),
+  Res = Recv(),
+  Stop(),
+  Res.
+
+sudokuWorker(Pop, Merge, Done) ->
+  case Pop() of
+    {'empty'} -> Done({'no_solution'});
+    {'ok', M} ->
+      Mref = refine(M),
+      case solved(Mref) of
+        true ->  Done({'solved', Mref});
+        false ->
+          Merge(heaps:from_list(guesses(Mref))),
+          sudokuWorker(Pop, Merge, Done)
+      end
+  end.
+
+pool(N, Work) -> exit(undef).
+
+reply(X) -> exit(undef).
 
 solve_one([]) ->
     exit(no_solution);
@@ -296,4 +345,3 @@ valid_row(Row) ->
 
 valid_solution(M) ->
     valid_rows(M) andalso valid_rows(transpose(M)) andalso valid_rows(blocks(M)).
-

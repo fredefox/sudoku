@@ -46,3 +46,14 @@ With pooling the results look like this:
 The results are not drastically different from the previous result. This is
 likely due to the small size of the list. We would expect the improvement to
 be more pronounced if we were solving - say - a thousand sudokus in parallel.
+
+Parallelizing the solver
+========================
+* Problem with error propagation across ps.
+* tried to use
+  - parMap/2 in refine_rows/1 (data-parallelism)
+  - a pipeline in refine/1 (pipeline parallelism)
+    We decided against this because it increases the amount of data that
+    gets send; and because the complexity of this function appears to be
+    relatively small
+  - speculative parallelism in solve_one
