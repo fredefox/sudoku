@@ -237,57 +237,6 @@ solve_refined(M) ->
 	    solve_one(guesses(M))
     end.
 
-% Xs :: Heap (Int, SudokuPuzzle)
-heapServer(Xs) ->
-  receive
-    % NewXs is an ordered list.
-    %   NewXs :: [(Int, SudokuPuzzle)]
-    {_Pid, {'merge', Ys}} -> heapServer(heaps:merge(Xs, Ys));
-    {Pid , {'pop'}} ->
-       case heaps:delete_min(Xs) of
-         {'ok', {NewXs, Min}} ->
-           Pid ! {'ok', Min},
-           heapServer(NewXs);
-         {'empty'} ->
-           % TODO Add `Pid` to list of waiting elements.
-           Pid ! {'empty'},
-           heapServer(Xs)
-       end
-  end.
-
-startHeapServer(Ms) ->
-  Pid = spawn_link(fun() -> heapServer(heaps:from_list(Ms)) end),
-  Pop = fun() -> Pid ! {'pop'}, receive X -> X end end,
-  Merge = fun(Xs) -> Pid ! {'merge', Xs} end,
-  {Pop, Merge}.
-
-% Ms :: Heap (Int, SudokuPuzzle)
-manager(Ms) ->
-  {Pop, Merge} = startHeapServer(Ms),
-  S = self(),
-  Solved = fun(Solution) -> S ! Solution end,
-  {Recv, Stop} = pool(4, fun() -> sudokuWorker(Pop, Merge, Solved) end),
-  Res = Recv(),
-  Stop(),
-  Res.
-
-sudokuWorker(Pop, Merge, Done) ->
-  case Pop() of
-    {'empty'} -> Done({'no_solution'});
-    {'ok', M} ->
-      Mref = refine(M),
-      case solved(Mref) of
-        true ->  Done({'solved', Mref});
-        false ->
-          Merge(heaps:from_list(guesses(Mref))),
-          sudokuWorker(Pop, Merge, Done)
-      end
-  end.
-
-pool(N, Work) -> exit(undef).
-
-reply(X) -> exit(undef).
-
 solve_one([]) ->
     exit(no_solution);
 solve_one([M]) ->
