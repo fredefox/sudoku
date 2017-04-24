@@ -3,7 +3,6 @@
 -compile(export_all).
 -import(par, [poolMap/3]).
 -import(p, [parMap/2]).
--import(heaps, [add/2, from_list/1, merge/2, min/1]).
 
 %% %% generators
 
@@ -219,39 +218,101 @@ update_nth(I,X,Xs) ->
 
 %% solve a puzzle
 
-solve(M) ->
-    Solution = solve_refined(refine(fill(M))),
-    case valid_solution(Solution) of
-	true ->
-	    Solution;
-	false ->
-	    exit({invalid_solution,Solution})
-    end.
+-define(NUM_WORKERS,4).
 
-%% Uses guesses to solve puzzles that are only partially solved.
-solve_refined(M) ->
-    case solved(M) of
-	true ->
-	    M;
-	false ->
-	    solve_one(guesses(M))
-    end.
+solve(Sud) -> 
+  SudokuPuzzle = refine(fill(Sud)),
+  H = heaps:from_list([{hard(SudokuPuzzle), SudokuPuzzle}]),
+  S = self(),
+  Pids = [spawn_link(fun() -> worker(S) end) || _ <- lists:seq(1, ?NUM_WORKERS)],
+  format("starting workers~n"),
+  Result = heap(H,?NUM_WORKERS),
+  format("got: ~p~n", [Result]),
+  format("killing workers~n"),
+  % process_flag(trap_exit,true),
+  [exit(P, 'normal') || P <- Pids],
+  Result.
 
-solve_one([]) ->
-    exit(no_solution);
-solve_one([M]) ->
-    solve_refined(M);
-solve_one([M|Ms]) ->
-    case catch solve_refined(M) of
-	{'EXIT',no_solution} ->
-	    solve_one(Ms);
-	Solution ->
-	    Solution
-    end.
+dbg(_S) -> ok. % io:format("[~p]: ~p~n", [self(), S]).
+format(_A) -> ok.
+format(_A, _B) -> ok.
+
+worker(S) ->
+  S ! {pop, self()},
+  receive
+    Puzzle ->
+      dbg("solving puzzle"),
+      case solved(Puzzle) of
+        true  -> dbg("was solved"), S ! {solved, Puzzle};
+        false -> dbg("wasnt solved"),
+                 Puzzles = [{hard(P), P} || P <- guesses(Puzzle)],
+                 S ! {merge, {prioq,_,_} = heaps:from_list(Puzzles)},
+                 worker(S)
+      end
+  end.
+
+heap(H,T) ->
+ format("heap size: ~p~n",[heaps:size(H)]),
+ receive {merge,H2} -> dbg("heap merge"), heap(heaps:merge(H, H2),T);
+         {pop,Worker} ->
+                format("heap pop: ~p~n", [Worker]),
+		case pop(H) of
+                  {{_Diff, SP}, H2} -> 
+                    Worker ! SP,
+                    case heaps:empty(H2) of
+                      true -> heap2([],T);
+                      false -> heap(H2,T)
+                    end;
+                  empty -> heap2([Worker],T)
+                end;
+         {solved,Sol} -> dbg("heap solved"), dbg("returning from heap"), {ok, Sol}
+ end.
+
+pop(H) -> case heaps:empty(H) of
+    true ->  empty;
+    false -> {heaps:min(H), heaps:delete_min(H)}
+  end.
+
+heap2(Ws,T) ->
+ format("workers: ~p~n",[Ws]),
+ receive {merge,H} -> format("heap2 merge~n"),
+                      {Elems,H2} = pops(length(Ws),H),
+                      Ws2 = send_puzzles(Elems, Ws),
+                      case Ws2 of
+                           [] -> heap(H2,T);
+                           _  -> heap2(Ws2,T)
+                      end;
+         {pop,Worker} -> format("heap2 pop: ~p~n", [Worker]),
+                         Workers = [Worker|Ws],
+                         case length(Workers) == T of
+                           true ->  no_solution;
+                           false -> heap2(Workers,T)
+                         end;
+         {solved,Sol} -> format("returning from heap2~n"), {ok, Sol}
+ end.
+
+% for Elem in Elems send to Ws[0], Ws[1] etc, Ws2 is remainder
+send_puzzles([], Workers) -> Workers;
+send_puzzles([{_Diff, Puzzle}|Puzzles],[Worker|Workers]) ->
+  Worker ! Puzzle,
+  send_puzzles(Puzzles,Workers).
+
+% Try to pop length Ws Elems from H, H2 is remainder:
+%     pops N Heap:
+%     while N-- && Heap not empty: output Heap.pop()
+%     done
+pops(0,Heap) ->
+   {[], Heap};
+pops(N,Heap) ->
+  case pop(Heap) of
+     {E,Heap2} -> {Es,Heap3} = pops(N-1,Heap2),
+                         {[E|Es],Heap3};
+     empty -> {[], Heap}
+  end.
 
 %% benchmarks
 
--define(EXECUTIONS,1).
+-define(EXECUTIONS,100).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
