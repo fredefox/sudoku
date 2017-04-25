@@ -218,7 +218,7 @@ update_nth(I,X,Xs) ->
 
 %% solve a puzzle
 
--define(NUM_WORKERS,4).
+-define(NUM_WORKERS,1).
 
 solve(Sud) -> 
   SudokuPuzzle = refine(fill(Sud)),
@@ -320,9 +320,8 @@ heap2(Ws,T,R) ->
                       end;
          {pop,Worker,R} -> %format("heap2 pop: ~p~n", [Worker]),
                          Workers = [Worker|Ws],
-                         case length(lists:usort(Workers)) == T+1 of
+                         case length(lists:usort(Workers)) == T of
 			     true ->
-				 io:format("wat: ~p~n",[Workers]),
 				 no_solution;
 			     false -> heap2(Workers,T,R)
                          end;
