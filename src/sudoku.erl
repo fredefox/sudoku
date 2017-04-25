@@ -240,8 +240,8 @@ solve(Sud) ->
 	  Result
   end.
 
-dbg(S) -> io:format("[~p]: ~p~n", [self(), S]).
-format(A) -> io:format(A).
+dbg(S) -> ok. % io:format("[~p]: ~p~n", [self(), S]).
+format(A) -> ok. % io:format(A).
 format(A, B) -> ok.%io:format(A,[B]).
 
 %optimization: puzzles sent to heap should never be solved?
@@ -349,7 +349,7 @@ pops(N,Heap) ->
 
 %% benchmarks
 
--define(EXECUTIONS,1).
+-define(EXECUTIONS,100).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),

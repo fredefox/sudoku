@@ -1,6 +1,15 @@
 Intro
 =====
-Source-files are located in `src/`
+Source-files are located in `src/`.
+
+The main implementation is in `sudoku.erl`. We've used an implementation of
+heaps that were taken from: https://gist.github.com/larsmans/1248317 written
+by Lars Buitinck. Other than that we've written everything ourselves or
+taken it from the standard library.
+
+First we parallelized solving multiple sudokus in parallel. This is described
+in the next section. Then we parallelized the solver itself, this is described
+in the section thereafter.
 
 Benchmark results
 =================
@@ -49,11 +58,29 @@ be more pronounced if we were solving - say - a thousand sudokus in parallel.
 
 Parallelizing the solver
 ========================
+We ran into the following problems during our attempt at parallelizing the
+solver:
+
 * Problem with error propagation across ps.
 * tried to use
-  - parMap/2 in refine_rows/1 (data-parallelism)
-  - a pipeline in refine/1 (pipeline parallelism)
+  - `parMap/2` in `refine_rows/1` (data-parallelism)
+  - a pipeline in `refine/1` (pipeline parallelism)
     We decided against this because it increases the amount of data that
     gets send; and because the complexity of this function appears to be
     relatively small
-  - speculative parallelism in solve_one
+  - speculative parallelism in `solve_one/1`
+
+The solution we ended up with uses speculative. All unsolved sudokus are
+stored in a heap in the master thread. The sudokus are sorted by their
+difficulty. Workers are created in a pool that poll the master thread
+for sudokus to solve whenever they become idle.
+
+    > sudoku:poolbenchmarks().
+    {48860525,
+     [{wildcat,0.30763},
+      {diabolical,12.73051},
+      {vegard_hanssen,83.6046},
+      {challenge,4.62354},
+      {challenge1,280.87361},
+      {extreme,19.04538},
+      {seventeen,87.41955}]}
