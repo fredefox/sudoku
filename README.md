@@ -76,11 +76,11 @@ difficulty. Workers are created in a pool that poll the master thread
 for sudokus to solve whenever they become idle.
 
     > sudoku:poolbenchmarks().
-    {3507750,
-     [{wildcat,0.33832999999999996},
-      {diabolical,4.4631300000000005},
-      {vegard_hanssen,8.180060000000001},
-      {challenge,2.86123},
-      {challenge1,7.75733},
-      {extreme,7.3773800000000005},
-      {seventeen,4.09971}]}
+    {48860525,
+     [{wildcat,0.30763},
+      {diabolical,12.73051},
+      {vegard_hanssen,83.6046},
+      {challenge,4.62354},
+      {challenge1,280.87361},
+      {extreme,19.04538},
+      {seventeen,87.41955}]}

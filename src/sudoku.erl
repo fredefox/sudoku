@@ -233,15 +233,15 @@ solve(Sud) ->
 				SudokuPuzzle}]),
 						%format("starting workers~n"),
 	  Result = heap(H,?NUM_WORKERS,R),
-	  io:format("got: ~p~n", [Result]),
+	  % io:format("got: ~p~n", [Result]),
 						%format("killing workers~n"),
 	  [P ! die || P <- Pids],
 	  [receive {P,died} -> ok end || P <- Pids],
 	  Result
   end.
 
-dbg(S) -> io:format("[~p]: ~p~n", [self(), S]).
-format(A) -> io:format(A).
+dbg(S) -> ok. % io:format("[~p]: ~p~n", [self(), S]).
+format(A) -> ok. % io:format(A).
 format(A, B) -> ok.%io:format(A,[B]).
 
 %optimization: puzzles sent to heap should never be solved?
@@ -322,7 +322,7 @@ heap2(Ws,T,R) ->
                          Workers = [Worker|Ws],
                          case length(lists:usort(Workers)) == T+1 of
 			     true ->
-				 io:format("wat: ~p~n",[Workers]),
+				 % io:format("wat: ~p~n",[Workers]),
 				 no_solution;
 			     false -> heap2(Workers,T,R)
                          end;
@@ -350,7 +350,7 @@ pops(N,Heap) ->
 
 %% benchmarks
 
--define(EXECUTIONS,1).
+-define(EXECUTIONS,100).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
