@@ -218,7 +218,7 @@ update_nth(I,X,Xs) ->
 
 %% solve a puzzle
 
--define(NUM_WORKERS,1).
+-define(NUM_WORKERS,4).
 
 solve(Sud) -> 
   SudokuPuzzle = refine(fill(Sud)),
@@ -233,7 +233,7 @@ solve(Sud) ->
 				SudokuPuzzle}]),
 						%format("starting workers~n"),
 	  Result = heap(H,?NUM_WORKERS,R),
-	  io:format("got: ~p~n", [Result]),
+	  % io:format("got: ~p~n", [Result]),
 						%format("killing workers~n"),
 	  [P ! die || P <- Pids],
 	  [receive {P,died} -> ok end || P <- Pids],
@@ -349,7 +349,7 @@ pops(N,Heap) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+-define(EXECUTIONS,1).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
