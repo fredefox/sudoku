@@ -222,54 +222,86 @@ update_nth(I,X,Xs) ->
 
 solve(Sud) -> 
   SudokuPuzzle = refine(fill(Sud)),
-  H = heaps:from_list([{hard(SudokuPuzzle), SudokuPuzzle}]),
-  S = self(),
-  Pids = [spawn_link(fun() -> worker(S) end) || _ <- lists:seq(1, ?NUM_WORKERS)],
-  format("starting workers~n"),
-  Result = heap(H,?NUM_WORKERS),
-  format("got: ~p~n", [Result]),
-  format("killing workers~n"),
-  % process_flag(trap_exit,true),
-  [exit(P, 'normal') || P <- Pids],
-  case Result of
-    {ok, Res} -> true = solved(Res);
-    no_solution -> ok
-  end,
-  Result.
-
-dbg(_S) -> ok. % io:format("[~p]: ~p~n", [self(), S]).
-format(_A) -> ok.
-format(_A, _B) -> ok.
-
-worker(S) ->
-  S ! {pop, self()},
-  receive
-    Puzzle ->
-      dbg("solving puzzle"),
-      case solved(Puzzle) of
-        true  -> dbg("was solved"), S ! {solved, Puzzle};
-        false -> dbg("wasnt solved"),
-                 Puzzles = [{hard(P), P} || P <- lists:map(fun refine/1, guesses(Puzzle))],
-                 S ! {merge, {prioq,_,_} = heaps:from_list(Puzzles)},
-                 worker(S)
-      end
+  case solved(SudokuPuzzle) of
+      true -> SudokuPuzzle;
+      false ->
+	  S = self(),
+	  R = make_ref(),
+	  Pids = [spawn_link(fun() -> worker(S,R) end) 
+		  || _ <- lists:seq(1, ?NUM_WORKERS)],
+	  H = heaps:from_list([{hard(SudokuPuzzle),
+				SudokuPuzzle}]),
+						%format("starting workers~n"),
+	  Result = heap(H,?NUM_WORKERS,R),
+	  io:format("got: ~p~n", [Result]),
+						%format("killing workers~n"),
+	  [P ! die || P <- Pids],
+	  [receive {P,died} -> ok end || P <- Pids],
+	  Result
   end.
 
-heap(H,T) ->
- format("heap size: ~p~n",[heaps:size(H)]),
- receive {merge,H2} -> dbg("heap merge"), heap(heaps:merge(H, H2),T);
-         {pop,Worker} ->
-                format("heap pop: ~p~n", [Worker]),
+dbg(S) -> io:format("[~p]: ~p~n", [self(), S]).
+format(A) -> io:format(A).
+format(A, B) -> ok.%io:format(A,[B]).
+
+%optimization: puzzles sent to heap should never be solved?
+worker(S,R) ->
+    %dbg("pop"),
+    S ! {pop, self(),R},
+    receive
+	die -> S ! {self(),died};
+	Puzzle ->
+	  %could do a lot of loop merging here,
+	  %e.g. guesses already generates the hardness for each puzzle
+	    Puzzles = guesses(Puzzle),
+	    case any_solved(Puzzles) of
+		false ->
+		    %dbg("merge"),
+		    S ! {merge, heaps:from_list([{hard(P),P}
+						 || P <- Puzzles]),R},
+		    worker(S,R);
+		Solution ->
+		    dbg("solved"),
+		    S ! {solved,Solution,R},
+		    worker(S,R) %need to send confirmation I die
+	    end
+    end.
+any_solved([])->
+    false;
+any_solved([Puzzle|Ps]) ->
+    case solved(Puzzle) of
+	true ->
+	    Puzzle;
+	false ->
+	    any_solved(Ps)
+    end.
+
+%dbg("solving puzzle"),
+%      case solved(Puzzle) of
+%        true  -> dbg("was solved"), S ! {solved, Puzzle};
+%        false -> dbg("wasnt solved"),
+%                 Puzzles = [{hard(P), P} || P <- guesses(Puzzle)],
+%                 S ! {merge, {prioq,_,_} = heaps:from_list(Puzzles)},
+%                 worker(S)
+%      end
+
+
+heap(H,T,R) ->
+ %format("heap size: ~p~n",heaps:size(H)),
+ receive {merge,H2,R} -> %dbg("heap merge"),
+	               heap(heaps:merge(H, H2),T,R);
+         {pop,Worker,R} ->
+                %format("heap pop: ~p~n", [Worker]),
 		case pop(H) of
                   {{_Diff, SP}, H2} -> 
                     Worker ! SP,
                     case heaps:empty(H2) of
-                      true -> heap2([],T);
-                      false -> heap(H2,T)
+                      true -> heap2([],T,R);
+                      false -> heap(H2,T,R)
                     end;
-                  empty -> heap2([Worker],T)
+                  empty -> heap2([Worker],T,R)
                 end;
-         {solved,Sol} -> dbg("heap solved"), dbg("returning from heap"), {ok, Sol}
+         {solved,Sol,R} -> {ok, Sol}
  end.
 
 pop(H) -> case heaps:empty(H) of
@@ -277,22 +309,24 @@ pop(H) -> case heaps:empty(H) of
     false -> {heaps:min(H), heaps:delete_min(H)}
   end.
 
-heap2(Ws,T) ->
- format("workers: ~p~n",[Ws]),
- receive {merge,H} -> format("heap2 merge~n"),
+heap2(Ws,T,R) ->
+ %format("workers: ~p~n",[Ws]),
+ receive {merge,H,R} -> %format("heap2 merge~n"),
                       {Elems,H2} = pops(length(Ws),H),
                       Ws2 = send_puzzles(Elems, Ws),
                       case Ws2 of
-                           [] -> heap(H2,T);
-                           _  -> heap2(Ws2,T)
+                           [] -> heap(H2,T,R);
+                           _  -> heap2(Ws2,T,R)
                       end;
-         {pop,Worker} -> format("heap2 pop: ~p~n", [Worker]),
+         {pop,Worker,R} -> %format("heap2 pop: ~p~n", [Worker]),
                          Workers = [Worker|Ws],
-                         case length(Workers) == T of
-                           true ->  no_solution;
-                           false -> heap2(Workers,T)
+                         case length(lists:usort(Workers)) == T+1 of
+			     true ->
+				 io:format("wat: ~p~n",[Workers]),
+				 no_solution;
+			     false -> heap2(Workers,T,R)
                          end;
-         {solved,Sol} -> format("returning from heap2~n"), {ok, Sol}
+         {solved,Sol,R} -> {ok, Sol}
  end.
 
 % for Elem in Elems send to Ws[0], Ws[1] etc, Ws2 is remainder
@@ -316,7 +350,7 @@ pops(N,Heap) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+-define(EXECUTIONS,1).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
